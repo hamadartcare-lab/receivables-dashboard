@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>لوحة متابعة الذمم المدينة</title>
+<style>
+:root{
+  color-scheme:light;
+  --page:#f9f9f7; --surface:#fcfcfb; --card:#ffffff;
+  --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10);
+  --accent:#2a78d6; --accent-soft:#cde2fb; --accent-ink:#1c5cab;
+  --good:#0ca30c; --good-ink:#006300; --warn:#fab219; --crit:#d03b3b;
+  --hover:rgba(42,120,214,.07);
+  --shadow:0 1px 2px rgba(0,0,0,.04),0 4px 16px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    color-scheme:dark;
+    --page:#0d0d0d; --surface:#1a1a19; --card:#1a1a19;
+    --ink:#f0efec; --ink2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+    --accent:#3987e5; --accent-soft:#184f95; --accent-ink:#86b6ef;
+    --good-ink:#0ca30c; --hover:rgba(57,135,229,.12); --shadow:none;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;font-size:14px;line-height:1.5}
+.wrap{max-width:1200px;margin:0 auto;padding:24px 20px 48px}
+header.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+h1{font-size:24px;margin:0 0 4px;font-weight:700}
+.sub{color:var(--ink2);margin:0}
+.btn{font:inherit;border:1px solid var(--border);background:var(--card);color:var(--ink);padding:7px 14px;border-radius:8px;cursor:pointer}
+.btn:hover{background:var(--hover)}
+nav.tabs{display:flex;gap:4px;border-bottom:1px solid var(--grid);margin-bottom:20px;overflow-x:auto}
+nav.tabs button{font:inherit;background:none;border:0;border-bottom:2px solid transparent;padding:10px 16px;color:var(--ink2);cursor:pointer;white-space:nowrap;font-weight:600}
+nav.tabs button[aria-selected="true"]{color:var(--accent-ink);border-bottom-color:var(--accent)}
+nav.tabs button:hover{color:var(--ink)}
+section.view{display:none}
+section.view.on{display:block}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow)}
+.card h2{font-size:16px;margin:0 0 4px}
+.card .hint{color:var(--muted);font-size:12.5px;margin:0 0 14px}
+.grid{display:grid;gap:16px}
+.kpis{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:16px}
+.kpi{cursor:default}
+.kpi.click{cursor:pointer}
+.kpi.click:hover{border-color:var(--accent)}
+.kpi .lbl{color:var(--ink2);font-size:13px;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.kpi .val{font-size:24px;font-weight:700;letter-spacing:-.01em}
+.kpi .val small{font-size:13px;font-weight:500;color:var(--ink2);margin-inline-start:4px}
+.kpi .foot{color:var(--muted);font-size:12.5px;margin-top:4px}
+.hero .val{font-size:34px}
+.two{grid-template-columns:1.4fr 1fr}
+@media (max-width:860px){.two{grid-template-columns:1fr}}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+/* horizontal bars */
+.bars{display:flex;flex-direction:column;gap:2px}
+.bar-row{display:grid;grid-template-columns:minmax(120px,38%) 1fr auto;align-items:center;gap:12px;padding:6px 8px;border-radius:8px;cursor:pointer}
+.bar-row:hover,.bar-row:focus-visible{background:var(--hover);outline:none}
+.bar-row .name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+.bar-track{height:14px;position:relative;border-inline-start:1px solid var(--axis)}
+.bar-fill{height:100%;background:var(--accent);border-radius:4px 0 0 4px;min-width:2px}
+.bar-row .num{font-variant-numeric:tabular-nums;color:var(--ink2);font-size:13px;white-space:nowrap}
+.bar-row.zero .bar-fill{background:var(--axis)}
+/* split bar */
+.split{display:flex;height:16px;gap:2px;margin:10px 0 8px}
+.split span{height:100%}
+.split span:first-child{border-radius:0 4px 4px 0}
+.split span:last-child{border-radius:4px 0 0 4px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;color:var(--ink2);font-size:13px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+/* table */
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.search{font:inherit;padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink);min-width:220px;flex:1;max-width:340px}
+.chip{font:inherit;font-size:13px;border:1px solid var(--border);background:var(--surface);color:var(--ink2);padding:5px 12px;border-radius:999px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:start;font-weight:600;color:var(--ink2);padding:9px 10px;border-bottom:1px solid var(--axis);white-space:nowrap;cursor:pointer;user-select:none}
+th.nosort{cursor:default}
+th .arr{color:var(--muted);font-size:11px}
+td{padding:9px 10px;border-bottom:1px solid var(--grid)}
+td.n,th.n{text-align:end;font-variant-numeric:tabular-nums;white-space:nowrap}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover{background:var(--hover)}
+tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;padding:2px 9px;border-radius:999px;border:1px solid var(--border);white-space:nowrap;color:var(--ink)}
+.muted{color:var(--muted)}
+.note{background:var(--hover);border-inline-start:3px solid var(--accent);padding:10px 14px;border-radius:6px;color:var(--ink2);font-size:13px;margin-top:14px}
+.empty{text-align:center;color:var(--muted);padding:24px}
+/* modal */
+dialog{border:1px solid var(--border);border-radius:14px;padding:0;max-width:900px;width:calc(100% - 32px);background:var(--card);color:var(--ink)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+.dlg-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px 20px;border-bottom:1px solid var(--grid)}
+.dlg-head h3{margin:0;font-size:17px}
+.dlg-body{padding:16px 20px 20px;max-height:70vh;overflow:auto}
+.mini-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.mini-kpis div{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+.mini-kpis b{display:block;font-size:17px;font-variant-numeric:tabular-nums}
+.mini-kpis span{color:var(--ink2);font-size:12.5px}
+#tip{position:fixed;pointer-events:none;background:var(--card);color:var(--ink);border:1px solid var(--border);box-shadow:0 4px 16px rgba(0,0,0,.15);padding:8px 10px;border-radius:8px;font-size:12.5px;display:none;z-index:50;max-width:280px}
+#tip b{display:block;font-size:14px}
+footer{color:var(--muted);font-size:12px;margin-top:28px;text-align:center}
+@media print{
+  body{background:#fff}
+  .btn,nav.tabs,.toolbar{display:none!important}
+  section.view{display:block!important;break-before:page}
+  section.view:first-of-type{break-before:auto}
+  .card{box-shadow:none;break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div style="padding:10px;text-align:center"><button class="chip" type="button" id="choose-workbook">ربط ملف الإكسل</button><input id="workbook-input" type="file" accept=".xlsx" hidden></div><div id="sync-status" role="status" dir="rtl" style="padding:8px 16px;text-align:center">اربط ملف الإكسل لعرض الذمم</div>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>لوحة متابعة الذمم المدينة</h1>
+      <p class="sub">جميع المبالغ بالريال السعودي (ر.س) · تاريخ التقرير: <span id="asof"></span></p>
+    </div>
+    <button class="btn" onclick="window.print()">طباعة / حفظ PDF</button>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="overview" aria-selected="true">نظرة عامة</button>
+    <button role="tab" data-tab="private" aria-selected="false">القطاع الخاص (المناطق)</button>
+    <button role="tab" data-tab="nupco" aria-selected="false">نبكو</button>
+    <button role="tab" data-tab="market" aria-selected="false">ماركت بليس</button>
+  </nav>
+
+  <!-- ============ نظرة عامة ============ -->
+  <section class="view on" id="v-overview">
+    <div class="grid kpis">
+      <div class="card kpi hero"><div class="lbl">إجمالي الذمم المستحقة</div><div class="val" id="k-total"></div><div class="foot" id="k-total-foot"></div></div>
+      <div class="card kpi click" data-go="nupco"><div class="lbl">ذمم نبكو</div><div class="val" id="k-nupco"></div><div class="foot" id="k-nupco-foot"></div></div>
+      <div class="card kpi click" data-go="market"><div class="lbl">ذمم ماركت بليس</div><div class="val" id="k-market"></div><div class="foot" id="k-market-foot"></div></div>
+      <div class="card kpi click" data-go="private"><div class="lbl">ذمم القطاع الخاص</div><div class="val" id="k-private"></div><div class="foot" id="k-private-foot"></div></div>
+    </div>
+    <div class="grid two">
+      <div class="card">
+        <h2>توزيع الذمم حسب الجهة</h2>
+        <p class="hint">اضغط على أي جهة لعرض تفاصيلها</p>
+        <div class="bars" id="seg-bars"></div>
+      </div>
+      <div class="card">
+        <h2>أكبر 10 عملاء مديونية (القطاع الخاص)</h2>
+        <p class="hint">اضغط على العميل لعرض كشف الحساب</p>
+        <div class="bars" id="top-bars"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ القطاع الخاص ============ -->
+  <section class="view" id="v-private">
+    <div class="grid kpis" id="region-kpis"></div>
+    <div class="card">
+      <h2>العملاء حسب المنطقة</h2>
+      <p class="hint">اضغط على أي عميل لعرض كشف الحساب التفصيلي (الفواتير والسندات)</p>
+      <div class="toolbar">
+        <input class="search" id="p-search" placeholder="بحث باسم العميل…">
+        <div id="p-chips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      </div>
+      <div class="tbl-wrap"><table id="p-table"></table></div>
+    </div>
+  </section>
+
+  <!-- ============ نبكو ============ -->
+  <section class="view" id="v-nupco">
+    <div class="grid kpis" id="n-kpis"></div>
+    <div class="card" style="margin-bottom:16px">
+      <h2>نسبة التحصيل من العطاءات المسلّمة</h2>
+      <div class="split" id="n-split"></div>
+      <div class="legend" id="n-legend"></div>
+    </div>
+    <div class="card">
+      <h2>فواتير نبكو</h2>
+      <div class="toolbar">
+        <input class="search" id="n-search" placeholder="بحث برقم الفاتورة أو أمر الشراء…">
+        <div id="n-chips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      </div>
+      <div class="tbl-wrap"><table id="n-table"></table></div>
+    </div>
+  </section>
+
+  <!-- ============ ماركت بليس ============ -->
+  <section class="view" id="v-market">
+    <div class="grid kpis" id="m-kpis"></div>
+    <div class="card" style="margin-bottom:16px">
+      <h2>حالة الفواتير غير المدفوعة</h2>
+      <div class="split" id="m-split"></div>
+      <div class="legend" id="m-legend"></div>
+    </div>
+    <div class="card">
+      <h2>فواتير ماركت بليس</h2>
+      <div class="toolbar">
+        <input class="search" id="m-search" placeholder="بحث برقم الفاتورة أو أمر الشراء…">
+        <div id="m-chips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      </div>
+      <div class="tbl-wrap"><table id="m-table"></table></div>
+      <div class="note" id="m-note"></div>
+    </div>
+  </section>
+
+  <footer>تم إعداد هذه الصفحة من ملف «تفاصيل الذمم» · <span id="foot-date"></span></footer>
+</div>
+
+<dialog id="dlg">
+  <div class="dlg-head">
+    <div><h3 id="dlg-title"></h3><div class="muted" id="dlg-sub"></div></div>
+    <button class="btn" onclick="dlg.close()">إغلاق ✕</button>
+  </div>
+  <div class="dlg-body" id="dlg-body"></div>
+</dialog>
+<div id="tip"></div>
+
+<script>
+function renderDashboard(DATA) {
+const fmt = new Intl.NumberFormat('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});
+const sar = v => fmt.format(Math.round(v*100)/100) + ' ر.س';
+const sarHtml = v => fmt.format(Math.round(v*100)/100) + '<small>ر.س</small>';
+const pct = (a,b) => b ? (a/b*100).toFixed(1)+'%' : '0%';
+const sum = (arr,f=x=>x) => arr.reduce((a,x)=>a+f(x),0);
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const $ = id => document.getElementById(id);
+const STATUS = {
+  paid:{label:'مدفوعة', icon:'✓', color:'var(--good)'},
+  unpaid:{label:'غير مدفوعة', icon:'!', color:'var(--crit)'},
+  undelivered:{label:'لم تُسلَّم', icon:'◷', color:'var(--warn)'},
+};
+const badge = s => `<span class="badge"><span class="dot" style="background:${STATUS[s].color}"></span>${STATUS[s].icon} ${STATUS[s].label}</span>`;
+
+/* ============================ الحسابات ============================ */
+const regions = DATA.regions;
+const privateTotal = sum(regions, r=>r.total);
+const allCustomers = regions.flatMap(r=>r.customers.map(c=>({...c, region:r.name})));
+const nupcoOf = s => sum(DATA.nupco.filter(x=>x.status===s), x=>x.total);
+const nPaid = nupcoOf('paid'), nUnpaid = nupcoOf('unpaid'), nUndel = nupcoOf('undelivered');
+const nDelivered = nPaid + nUnpaid;
+const mAll = sum(DATA.market, x=>x.total);
+const mPaid = sum(DATA.market.filter(x=>x.status==='paid'), x=>x.total);
+const mUnpaid = mAll - mPaid;
+const mUnsub = sum(DATA.market.filter(x=>x.status==='unpaid' && !x.submitted), x=>x.total);
+const grand = nUnpaid + mUnpaid + privateTotal;
+
+/* ============================ تلميح ============================ */
+const tip = $('tip');
+function showTip(e, html){ tip.innerHTML=html; tip.style.display='block'; moveTip(e); }
+function moveTip(e){ const w=tip.offsetWidth, h=tip.offsetHeight; let x=e.clientX-w-14, y=e.clientY+14; if(x<8) x=e.clientX+14; if(y+h>innerHeight-8) y=e.clientY-h-14; tip.style.left=x+'px'; tip.style.top=y+'px'; }
+function hideTip(){ tip.style.display='none'; }
+
+/* ============================ أشرطة أفقية ============================ */
+function renderBars(el, items, total){
+  const max = Math.max(...items.map(i=>i.value), 1);
+  el.innerHTML = items.map((i,k)=>`
+    <div class="bar-row${i.value? '':' zero'}" tabindex="0" data-k="${k}">
+      <span class="name" title="${esc(i.label)}">${esc(i.label)}</span>
+      <span class="bar-track"><span class="bar-fill" style="width:${i.value/max*100}%;display:block"></span></span>
+      <span class="num">${sar(i.value)}</span>
+    </div>`).join('');
+  el.querySelectorAll('.bar-row').forEach(row=>{
+    const i = items[+row.dataset.k];
+    row.addEventListener('mouseenter', e=>showTip(e, `<b>${esc(i.label)}</b>${sar(i.value)}${total? ' · '+pct(i.value,total)+' من الإجمالي':''}${i.sub? '<br><span class="muted">'+esc(i.sub)+'</span>':''}`));
+    row.addEventListener('mousemove', moveTip);
+    row.addEventListener('mouseleave', hideTip);
+    const go = ()=>{ hideTip(); i.onClick && i.onClick(); };
+    row.addEventListener('click', go);
+    row.addEventListener('keydown', e=>{ if(e.key==='Enter') go(); });
+  });
+}
+function renderSplit(el, legendEl, parts){
+  const total = sum(parts, p=>p.value);
+  el.innerHTML = parts.filter(p=>p.value>0).map(p=>`<span style="flex:${p.value};background:${p.color}" data-l="${esc(p.label)}" data-v="${p.value}"></span>`).join('');
+  el.querySelectorAll('span').forEach(s=>{
+    s.addEventListener('mouseenter', e=>showTip(e, `<b>${s.dataset.l}</b>${sar(+s.dataset.v)} · ${pct(+s.dataset.v,total)}`));
+    s.addEventListener('mousemove', moveTip); s.addEventListener('mouseleave', hideTip);
+  });
+  legendEl.innerHTML = parts.map(p=>`<span><span class="dot" style="background:${p.color}"></span>${p.label}: <b>${sar(p.value)}</b> (${pct(p.value,total)})</span>`).join('');
+}
+
+/* ============================ جدول قابل للترتيب ============================ */
+function makeTable(el, cols, getRows, opts={}){
+  let sortKey = opts.sortKey, dir = opts.dir || -1;
+  function draw(){
+    const rows = getRows().slice();
+    if(sortKey){ const c = cols.find(c=>c.key===sortKey); rows.sort((a,b)=>{ const x=c.sort? c.sort(a):a[sortKey], y=c.sort? c.sort(b):b[sortKey]; return (x>y?1:x<y?-1:0)*dir; }); }
+    el.innerHTML = `<thead><tr>${cols.map(c=>`<th class="${c.num?'n':''} ${c.nosort?'nosort':''}" data-k="${c.key}">${c.label} <span class="arr">${sortKey===c.key? (dir>0?'▲':'▼'):''}</span></th>`).join('')}</tr></thead>
+      <tbody>${rows.length? rows.map((r,i)=>`<tr class="${opts.onRow?'click':''}" data-i="${i}">${cols.map(c=>`<td class="${c.num?'n':''}">${c.render? c.render(r): esc(r[c.key])}</td>`).join('')}</tr>`).join('') : `<tr><td class="empty" colspan="${cols.length}">لا توجد نتائج</td></tr>`}</tbody>
+      ${opts.foot? `<tfoot><tr>${opts.foot(rows)}</tr></tfoot>`:''}`;
+    el.querySelectorAll('th:not(.nosort)').forEach(th=>th.onclick=()=>{ const k=th.dataset.k; dir = sortKey===k? -dir : -1; sortKey=k; draw(); });
+    if(opts.onRow) el.querySelectorAll('tbody tr.click').forEach(tr=>tr.onclick=()=>opts.onRow(rows[+tr.dataset.i]));
+  }
+  draw(); return draw;
+}
+function chips(el, options, onChange){
+  let val = options[0].value;
+  el.innerHTML = options.map(o=>`<button class="chip" data-v="${o.value}" aria-pressed="${o.value===val}">${o.label}</button>`).join('');
+  el.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{ val=b.dataset.v; el.querySelectorAll('.chip').forEach(x=>x.setAttribute('aria-pressed', x===b)); onChange(val); });
+  return ()=>val;
+}
+
+/* ============================ التبويبات ============================ */
+const tabs = document.querySelectorAll('nav.tabs button');
+function openTab(name){
+  tabs.forEach(t=>t.setAttribute('aria-selected', t.dataset.tab===name));
+  document.querySelectorAll('section.view').forEach(s=>s.classList.toggle('on', s.id==='v-'+name));
+  history.replaceState(null,'','#'+name); scrollTo({top:0,behavior:'smooth'});
+}
+tabs.forEach(t=>t.onclick=()=>openTab(t.dataset.tab));
+document.querySelectorAll('[data-go]').forEach(k=>k.onclick=()=>openTab(k.dataset.go));
+
+/* ============================ كشف حساب العميل ============================ */
+const dlg = $('dlg');
+function openCustomer(c){
+  const inv = sum(c.tx, t=>t.dr), paid = sum(c.tx, t=>t.cr);
+  $('dlg-title').textContent = c.name;
+  $('dlg-sub').textContent = 'المنطقة: ' + c.region + ' · عدد الحركات: ' + c.tx.length;
+  const hasBranch = c.tx.some(t=>t.branch), hasDate = c.tx.some(t=>t.date);
+  $('dlg-body').innerHTML = `
+    <div class="mini-kpis">
+      <div><span>إجمالي الفواتير</span><b>${sar(inv)}</b></div>
+      <div><span>إجمالي المحصّل</span><b>${sar(paid)}</b></div>
+      <div><span>الرصيد المستحق</span><b>${sar(c.balance)}</b></div>
+    </div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th class="nosort">#</th>${hasDate?'<th class="nosort">التاريخ</th>':''}<th class="nosort">النوع</th><th class="nosort">المرجع</th>${hasBranch?'<th class="nosort">الفرع</th>':''}<th class="nosort n">مدين</th><th class="nosort n">دائن</th><th class="nosort n">الرصيد</th></tr></thead>
+      <tbody>${c.tx.map((t,i)=>`<tr><td class="muted">${i+1}</td>${hasDate?`<td>${esc(t.date)}</td>`:''}<td>${esc(t.type)}</td><td>${esc(t.ref)}</td>${hasBranch?`<td>${esc(t.branch||'')}</td>`:''}<td class="n">${t.dr? fmt.format(t.dr):''}</td><td class="n">${t.cr? fmt.format(t.cr):''}</td><td class="n">${t.bal!=null? fmt.format(t.bal):''}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td colspan="${2+(hasDate?1:0)+(hasBranch?1:0)}">الرصيد الختامي</td><td></td><td class="n">${fmt.format(inv)}</td><td class="n">${fmt.format(paid)}</td><td class="n">${fmt.format(c.balance)}</td></tr></tfoot>
+    </table></div>`;
+  dlg.showModal();
+}
+dlg.onclick = e=>{ if(e.target===dlg) dlg.close(); };
+
+/* ============================ نظرة عامة ============================ */
+$('asof').textContent = DATA.asOf; $('foot-date').textContent = DATA.asOf;
+$('k-total').innerHTML = sarHtml(grand);
+$('k-total-foot').textContent = 'نبكو + ماركت بليس + القطاع الخاص';
+$('k-nupco').innerHTML = sarHtml(nUnpaid);
+$('k-nupco-foot').textContent = pct(nUnpaid,grand)+' من الإجمالي · '+DATA.nupco.filter(x=>x.status==='unpaid').length+' فاتورة غير مدفوعة';
+$('k-market').innerHTML = sarHtml(mUnpaid);
+$('k-market-foot').textContent = pct(mUnpaid,grand)+' من الإجمالي · '+DATA.market.filter(x=>x.status==='unpaid').length+' فاتورة غير مدفوعة';
+$('k-private').innerHTML = sarHtml(privateTotal);
+$('k-private-foot').textContent = pct(privateTotal,grand)+' من الإجمالي · '+allCustomers.filter(c=>c.balance>0).length+' عميل مدين';
+
+let pRegion = 'all';
+const segs = [
+  {label:'ماركت بليس', value:mUnpaid, onClick:()=>openTab('market')},
+  {label:'نبكو', value:nUnpaid, onClick:()=>openTab('nupco')},
+  ...regions.map(r=>({label:'القطاع الخاص — '+r.name, value:r.total, sub:r.customers.length+' عميل', onClick:()=>{ setRegion(r.name); openTab('private'); }}))
+].sort((a,b)=>b.value-a.value);
+renderBars($('seg-bars'), segs, grand);
+renderBars($('top-bars'), allCustomers.slice().sort((a,b)=>b.balance-a.balance).slice(0,10).map(c=>({label:c.name, value:c.balance, sub:'المنطقة: '+c.region, onClick:()=>openCustomer(c)})), privateTotal);
+
+/* ============================ القطاع الخاص ============================ */
+$('region-kpis').innerHTML = regions.map(r=>`
+  <div class="card kpi click" data-region="${r.name}"><div class="lbl">منطقة ${r.name}</div><div class="val">${sarHtml(r.total)}</div>
+  <div class="foot">${pct(r.total,privateTotal)} من القطاع الخاص · ${r.customers.filter(c=>c.balance>0).length} عميل مدين</div></div>`).join('');
+chips($('p-chips'), [{value:'all',label:'كل المناطق'}, ...regions.map(r=>({value:r.name,label:r.name}))], v=>{ pRegion=v; drawP(); });
+function setRegion(name){ pRegion=name; $('p-chips').querySelectorAll('.chip').forEach(x=>x.setAttribute('aria-pressed', x.dataset.v===name)); drawP(); }
+document.querySelectorAll('[data-region]').forEach(k=>k.onclick=()=>setRegion(k.dataset.region));
+const drawP = makeTable($('p-table'), [
+  {key:'name', label:'العميل', render:c=>`<b>${esc(c.name)}</b>`},
+  {key:'region', label:'المنطقة'},
+  {key:'inv', label:'إجمالي الفواتير', num:true, sort:c=>sum(c.tx,t=>t.dr), render:c=>fmt.format(sum(c.tx,t=>t.dr))},
+  {key:'paid', label:'المحصّل', num:true, sort:c=>sum(c.tx,t=>t.cr), render:c=>fmt.format(sum(c.tx,t=>t.cr))},
+  {key:'balance', label:'الرصيد المستحق (ر.س)', num:true, render:c=> c.balance? `<b>${fmt.format(c.balance)}</b>` : '<span class="muted">0 — مسدّد</span>'},
+  {key:'share', label:'النسبة', num:true, sort:c=>c.balance, render:c=>pct(c.balance,privateTotal)},
+], ()=>{ const q=$('p-search').value.trim().toLowerCase(); return allCustomers.filter(c=>(pRegion==='all'||c.region===pRegion) && c.name.toLowerCase().includes(q)); },
+{ sortKey:'balance', onRow:openCustomer, foot:rows=>`<td colspan="2">الإجمالي (${rows.length} عميل)</td><td class="n">${fmt.format(sum(rows,c=>sum(c.tx,t=>t.dr)))}</td><td class="n">${fmt.format(sum(rows,c=>sum(c.tx,t=>t.cr)))}</td><td class="n">${fmt.format(sum(rows,c=>c.balance))}</td><td class="n">${pct(sum(rows,c=>c.balance),privateTotal)}</td>` });
+$('p-search').oninput = drawP;
+
+/* ============================ نبكو ============================ */
+$('n-kpis').innerHTML = `
+  <div class="card kpi"><div class="lbl">قيمة العطاءات المسلّمة</div><div class="val">${sarHtml(nDelivered)}</div><div class="foot">${DATA.nupco.filter(x=>x.status!=='undelivered').length} فاتورة</div></div>
+  <div class="card kpi"><div class="lbl"><span class="dot" style="background:var(--good)"></span>المدفوع</div><div class="val">${sarHtml(nPaid)}</div><div class="foot">${pct(nPaid,nDelivered)} من المسلّم</div></div>
+  <div class="card kpi"><div class="lbl"><span class="dot" style="background:var(--crit)"></span>المتبقي (الذمة)</div><div class="val">${sarHtml(nUnpaid)}</div><div class="foot">${pct(nUnpaid,nDelivered)} من المسلّم</div></div>
+  <div class="card kpi"><div class="lbl"><span class="dot" style="background:var(--warn)"></span>عطاءات لم تُسلَّم بعد</div><div class="val">${sarHtml(nUndel)}</div><div class="foot">غير محسوبة ضمن الذمم</div></div>`;
+renderSplit($('n-split'), $('n-legend'), [{label:'مدفوع',value:nPaid,color:'var(--good)'},{label:'غير مدفوع',value:nUnpaid,color:'var(--crit)'}]);
+let nStatus='all';
+chips($('n-chips'), [{value:'all',label:'الكل'},{value:'unpaid',label:'غير مدفوعة'},{value:'paid',label:'مدفوعة'},{value:'undelivered',label:'لم تُسلَّم'}], v=>{ nStatus=v; drawN(); });
+const drawN = makeTable($('n-table'), [
+  {key:'po', label:'أمر الشراء (PO)'},
+  {key:'inv', label:'رقم الفاتورة'},
+  {key:'invNew', label:'الفاتورة الجديدة', render:r=>r.invNew? esc(r.invNew):'<span class="muted">—</span>'},
+  {key:'qty', label:'الكمية', num:true, render:r=>fmt.format(r.qty)},
+  {key:'price', label:'السعر', num:true, render:r=>fmt.format(r.price)},
+  {key:'total', label:'الإجمالي (ر.س)', num:true, render:r=>`<b>${fmt.format(r.total)}</b>`},
+  {key:'status', label:'الحالة', render:r=>badge(r.status)},
+], ()=>{ const q=$('n-search').value.trim().toLowerCase(); return DATA.nupco.filter(r=>(nStatus==='all'||r.status===nStatus) && (r.inv+' '+r.invNew+' '+r.po).toLowerCase().includes(q)); },
+{ foot:rows=>`<td colspan="5">الإجمالي (${rows.length} فاتورة)</td><td class="n">${fmt.format(sum(rows,r=>r.total))}</td><td></td>` });
+$('n-search').oninput = drawN;
+
+/* ============================ ماركت بليس ============================ */
+$('m-kpis').innerHTML = `
+  <div class="card kpi"><div class="lbl">إجمالي الفواتير</div><div class="val">${sarHtml(mAll)}</div><div class="foot">${DATA.market.length} فاتورة</div></div>
+  <div class="card kpi"><div class="lbl"><span class="dot" style="background:var(--good)"></span>المدفوع</div><div class="val">${sarHtml(mPaid)}</div><div class="foot">${pct(mPaid,mAll)} من الإجمالي</div></div>
+  <div class="card kpi"><div class="lbl"><span class="dot" style="background:var(--crit)"></span>المتبقي (الذمة)</div><div class="val">${sarHtml(mUnpaid)}</div><div class="foot">${pct(mUnpaid,mAll)} من الإجمالي</div></div>
+  <div class="card kpi"><div class="lbl"><span class="dot" style="background:var(--warn)"></span>غير مرفوعة للتحصيل</div><div class="val">${sarHtml(mUnsub)}</div><div class="foot">${DATA.market.filter(x=>x.status==='unpaid'&&!x.submitted).length} فاتورة غير مدفوعة لم تُرفع بعد</div></div>`;
+renderSplit($('m-split'), $('m-legend'), [
+  {label:'مرفوعة للتحصيل', value:mUnpaid-mUnsub, color:'var(--accent)'},
+  {label:'لم تُرفع للتحصيل بعد', value:mUnsub, color:'var(--warn)'},
+]);
+let mFilter='all';
+chips($('m-chips'), [{value:'all',label:'الكل'},{value:'unpaid',label:'غير مدفوعة'},{value:'paid',label:'مدفوعة'},{value:'unsub',label:'لم تُرفع للتحصيل'}], v=>{ mFilter=v; drawM(); });
+const drawM = makeTable($('m-table'), [
+  {key:'po', label:'أمر الشراء (PO)'},
+  {key:'inv', label:'رقم الفاتورة'},
+  {key:'invNew', label:'الفاتورة الجديدة', render:r=>r.invNew? esc(r.invNew):'<span class="muted">—</span>'},
+  {key:'qty', label:'الكمية', num:true, sort:r=>sum(r.lines,l=>l.qty), render:r=>r.lines.map(l=>fmt.format(l.qty)).join('<br>')},
+  {key:'price', label:'السعر', num:true, sort:r=>r.lines[0].price, render:r=>r.lines.map(l=>fmt.format(l.price)).join('<br>')},
+  {key:'total', label:'الإجمالي (ر.س)', num:true, render:r=>`<b>${fmt.format(r.total)}</b>`},
+  {key:'status', label:'الحالة', render:r=>badge(r.status)},
+  {key:'submitted', label:'رُفعت للتحصيل', render:r=> r.status==='paid'? '<span class="muted">—</span>' : (r.submitted? '✓ نعم' : '<b>✕ لا</b>')},
+  {key:'note', label:'ملاحظة', nosort:true, render:r=> r.note? `<span class="muted">${esc(r.note)}</span>`:''},
+], ()=>{ const q=$('m-search').value.trim().toLowerCase(); return DATA.market.filter(r=>(mFilter==='all'||(mFilter==='unsub'? r.status==='unpaid'&&!r.submitted : r.status===mFilter)) && (r.inv+' '+r.invNew+' '+r.po).toLowerCase().includes(q)); },
+{ foot:rows=>`<td colspan="5">الإجمالي (${rows.length} فاتورة)</td><td class="n">${fmt.format(sum(rows,r=>r.total))}</td><td colspan="3"></td>` });
+$('m-search').oninput = drawM;
+$('m-note').textContent = 'تُحتسب جميع بنود الفاتورة الواحدة ضمن إجماليها.';
+
+/* فتح التبويب من رابط الصفحة (مثل ‎#nupco) */
+const h = location.hash.slice(1); if(['overview','private','nupco','market'].includes(h)) openTab(h);
+}
+</script>
+<script src='/xlsx.full.min.js'></script>
+<script src='/workbook.js'></script>
+<script src='/connect.js'></script>
+</body>
+</html>
